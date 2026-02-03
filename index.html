@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Task Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Weekly Task Manager</h1>
+
+        <!-- Day Columns -->
+        <div class="days-grid" id="daysGrid">
+            <div class="day-column" data-day="monday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Monday</div>
+                <div class="day-tasks" id="monday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="tuesday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Tuesday</div>
+                <div class="day-tasks" id="tuesday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="wednesday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Wednesday</div>
+                <div class="day-tasks" id="wednesday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="thursday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Thursday</div>
+                <div class="day-tasks" id="thursday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="friday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Friday</div>
+                <div class="day-tasks" id="friday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="saturday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Saturday</div>
+                <div class="day-tasks" id="saturday-tasks"></div>
+            </div>
+            <div class="day-column" data-day="sunday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                <div class="day-header">Sunday</div>
+                <div class="day-tasks" id="sunday-tasks"></div>
+            </div>
+        </div>
+
+        <!-- Task Pool -->
+        <div class="task-pool-section">
+            <div class="task-pool-header">
+                <h2>📋 Task Pool</h2>
+            </div>
+            <div class="add-task-form">
+                <input type="text" id="newTaskInput" placeholder="Enter a new task..." />
+                <button onclick="addTask()">Add Task</button>
+            </div>
+            <div id="taskPool"></div>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="completed-section">
+            <h2>✅ Completed Tasks</h2>
+            <div id="completedTasks"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
