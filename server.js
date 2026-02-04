@@ -12,10 +12,15 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Initialize PostgreSQL connection
-// Railway automatically provides DATABASE_URL when you add PostgreSQL
+if (!process.env.DATABASE_URL) {
+  console.error('⚠️ DATABASE_URL is MISSING. Ensure ${{ Postgres.DATABASE_URL }} is set in Railway Variables.');
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false // Required for Railway
+  }
 });
 
 // Create tasks table on startup
@@ -31,9 +36,10 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('? Database initialized successfully');
+    console.log('✅ Database initialized successfully');
   } catch (error) {
-    console.error('? Error initializing database:', error);
+    console.error('❌ Error initializing database:', error);
+    console.log('Current DATABASE_URL exists:', !!process.env.DATABASE_URL);
   }
 }
 
@@ -47,7 +53,6 @@ app.get('/api/tasks', async (req, res) => {
     const result = await pool.query('SELECT * FROM tasks ORDER BY position ASC');
     res.json(result.rows);
   } catch (error) {
-    console.error('Error getting tasks:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -59,7 +64,6 @@ app.get('/api/tasks/day/:day', async (req, res) => {
     const result = await pool.query('SELECT * FROM tasks WHERE day = $1 ORDER BY position ASC', [day]);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error getting tasks by day:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -68,19 +72,14 @@ app.get('/api/tasks/day/:day', async (req, res) => {
 app.post('/api/tasks', async (req, res) => {
   try {
     const { text, day = 'pool', completed = 0, position = 0 } = req.body;
-    
-    if (!text) {
-      return res.status(400).json({ error: 'Task text is required' });
-    }
+    if (!text) return res.status(400).json({ error: 'Task text is required' });
 
     const result = await pool.query(
       'INSERT INTO tasks (text, day, completed, position) VALUES ($1, $2, $3, $4) RETURNING *',
       [text, day, completed, position]
     );
-    
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error creating task:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -90,46 +89,20 @@ app.put('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { text, day, completed, position } = req.body;
-    
     let updates = [];
     let values = [];
     let valueIndex = 1;
-    
-    if (text !== undefined) {
-      updates.push(`text = $${valueIndex++}`);
-      values.push(text);
-    }
-    if (day !== undefined) {
-      updates.push(`day = $${valueIndex++}`);
-      values.push(day);
-    }
-    if (completed !== undefined) {
-      updates.push(`completed = $${valueIndex++}`);
-      values.push(completed);
-    }
-    if (position !== undefined) {
-      updates.push(`position = $${valueIndex++}`);
-      values.push(position);
-    }
-    
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
-    
+
+    if (text !== undefined) { updates.push(`text = $${valueIndex++}`); values.push(text); }
+    if (day !== undefined) { updates.push(`day = $${valueIndex++}`); values.push(day); }
+    if (completed !== undefined) { updates.push(`completed = $${valueIndex++}`); values.push(completed); }
+    if (position !== undefined) { updates.push(`position = $${valueIndex++}`); values.push(position); }
+
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
     values.push(id);
-    
-    const result = await pool.query(
-      `UPDATE tasks SET ${updates.join(', ')} WHERE id = $${valueIndex} RETURNING *`,
-      values
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Task not found' });
-    }
-    
+    const result = await pool.query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${valueIndex} RETURNING *`, values);
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error updating task:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -138,15 +111,9 @@ app.put('/api/tasks/:id', async (req, res) => {
 app.delete('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Task not found' });
-    }
-    
+    await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
     res.json({ id: parseInt(id), deleted: true });
   } catch (error) {
-    console.error('Error deleting task:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -168,19 +135,11 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`? Server running on http://0.0.0.0:${PORT}`);
-  console.log(`?? Database: PostgreSQL (${process.env.DATABASE_URL ? 'connected' : 'waiting for DATABASE_URL'})`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing database pool...');
-  await pool.end();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, closing database pool...');
   await pool.end();
   process.exit(0);
 });
