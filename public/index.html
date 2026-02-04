@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weekly Task Manager</title>
+    <title>Danny Do</title>
     <style>
         * {
             margin: 0;
@@ -116,6 +116,12 @@
             margin-bottom: 15px;
         }
 
+        #taskPool {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
         .task-item {
             background: white;
             border: 2px solid #e0e0e0;
@@ -141,9 +147,22 @@
 
         .task-content {
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .task-text-row {
+            display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 8px;
+            width: 100%;
+        }
+
+        .task-actions-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .task-text {
@@ -282,6 +301,10 @@
                 grid-template-columns: 1fr;
             }
             
+            #taskPool {
+                grid-template-columns: 1fr;
+            }
+
             .container {
                 padding: 15px;
             }
@@ -537,6 +560,10 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'task-content';
 
+            // Text row with edit button
+            const textRow = document.createElement('div');
+            textRow.className = 'task-text-row';
+
             // Task text or input
             if (editingTaskId === task.id) {
                 const input = document.createElement('input');
@@ -548,20 +575,20 @@
                     if (e.key === 'Enter') saveEdit(task.id);
                     if (e.key === 'Escape') cancelEdit();
                 };
-                contentDiv.appendChild(input);
+                textRow.appendChild(input);
 
                 const saveBtn = document.createElement('button');
                 saveBtn.className = 'save-btn';
                 saveBtn.innerHTML = '✓';
                 saveBtn.onclick = () => saveEdit(task.id);
-                contentDiv.appendChild(saveBtn);
+                textRow.appendChild(saveBtn);
 
                 setTimeout(() => input.focus(), 0);
             } else {
                 const textSpan = document.createElement('span');
                 textSpan.className = 'task-text';
                 textSpan.textContent = task.text;
-                contentDiv.appendChild(textSpan);
+                textRow.appendChild(textSpan);
 
                 // Edit button
                 const editBtn = document.createElement('button');
@@ -571,31 +598,35 @@
                     e.stopPropagation();
                     startEdit(task.id);
                 };
-                contentDiv.appendChild(editBtn);
-
-                // Checkbox and recycle for scheduled tasks
-                if (task.day !== 'pool' && task.day !== 'completed') {
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'task-checkbox';
-                    checkbox.checked = task.completed;
-                    checkbox.onchange = () => toggleComplete(task.id);
-                    contentDiv.appendChild(checkbox);
-
-                    const recycleBtn = document.createElement('button');
-                    recycleBtn.className = 'recycle-btn';
-                    recycleBtn.innerHTML = '♻️';
-                    recycleBtn.onclick = () => recycleTask(task.id);
-                    contentDiv.appendChild(recycleBtn);
-                }
+                textRow.appendChild(editBtn);
             }
 
-            div.appendChild(contentDiv);
+            contentDiv.appendChild(textRow);
+
+            // Actions row (checkbox, recycle, day buttons, delete)
+            const actionsRow = document.createElement('div');
+            actionsRow.className = 'task-actions-row';
+
+            // Checkbox and recycle for scheduled tasks
+            if (task.day !== 'pool' && task.day !== 'completed') {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'task-checkbox';
+                checkbox.checked = task.completed;
+                checkbox.onchange = () => toggleComplete(task.id);
+                actionsRow.appendChild(checkbox);
+
+                const recycleBtn = document.createElement('button');
+                recycleBtn.className = 'recycle-btn';
+                recycleBtn.innerHTML = '♻️';
+                recycleBtn.onclick = () => recycleTask(task.id);
+                actionsRow.appendChild(recycleBtn);
+            }
 
             // Day buttons for pool tasks
             if (task.day === 'pool') {
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'day-buttons';
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'day-buttons';
 
                 const days = [
                     { name: 'Mo', value: 'monday' },
@@ -612,16 +643,23 @@
                     btn.className = 'day-btn';
                     btn.textContent = day.name;
                     btn.onclick = () => moveToDay(task.id, day.value);
-                    buttonsDiv.appendChild(btn);
+                    buttonsContainer.appendChild(btn);
                 });
 
-                div.appendChild(buttonsDiv);
+                actionsRow.appendChild(buttonsContainer);
+
+                // Add delete button for pool tasks
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteTask(task.id);
+                actionsRow.appendChild(deleteBtn);
             }
 
             // Day buttons for scheduled tasks (not pool, not completed)
             if (task.day !== 'pool' && task.day !== 'completed') {
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'day-buttons';
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'day-buttons';
 
                 const days = [
                     { name: 'Mo', value: 'monday' },
@@ -638,16 +676,16 @@
                     btn.className = 'day-btn';
                     btn.textContent = day.name;
                     btn.onclick = () => moveToDay(task.id, day.value);
-                    buttonsDiv.appendChild(btn);
+                    buttonsContainer.appendChild(btn);
                 });
 
-                div.appendChild(buttonsDiv);
+                actionsRow.appendChild(buttonsContainer);
             }
 
             // Day buttons and delete for completed tasks
             if (task.day === 'completed') {
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'day-buttons';
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'day-buttons';
 
                 const days = [
                     { name: 'Mo', value: 'monday' },
@@ -664,17 +702,20 @@
                     btn.className = 'day-btn';
                     btn.textContent = day.name;
                     btn.onclick = () => moveToDay(task.id, day.value);
-                    buttonsDiv.appendChild(btn);
+                    buttonsContainer.appendChild(btn);
                 });
+
+                actionsRow.appendChild(buttonsContainer);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.textContent = 'Delete';
                 deleteBtn.onclick = () => deleteTask(task.id);
-                buttonsDiv.appendChild(deleteBtn);
-
-                div.appendChild(buttonsDiv);
+                actionsRow.appendChild(deleteBtn);
             }
+
+            contentDiv.appendChild(actionsRow);
+            div.appendChild(contentDiv);
 
             return div;
         }
