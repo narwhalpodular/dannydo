@@ -30,8 +30,53 @@
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-size: 2em;
+        }
+
+        .add-task-section {
+            background: #f0f4ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px solid #667eea;
+        }
+
+        .add-task-section h2 {
+            color: #333;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .add-task-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .add-task-form input {
+            flex: 1;
+            min-width: 250px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .add-task-form button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .add-task-form button:hover {
+            background: #5568d3;
         }
 
         .days-grid {
@@ -65,45 +110,10 @@
             border: 2px solid #ffd700;
         }
 
-        .task-pool-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
         .task-pool-header h2 {
             color: #333;
             font-size: 1.3em;
-        }
-
-        .add-task-form {
-            display: flex;
-            gap: 10px;
             margin-bottom: 15px;
-        }
-
-        .add-task-form input {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 1em;
-        }
-
-        .add-task-form button {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        .add-task-form button:hover {
-            background: #5568d3;
         }
 
         .task-item {
@@ -125,6 +135,10 @@
             opacity: 0.5;
         }
 
+        .task-item.drag-over-item {
+            border-top: 3px solid #2196F3;
+        }
+
         .task-content {
             display: flex;
             align-items: center;
@@ -136,12 +150,46 @@
             flex: 1;
             font-size: 1em;
             color: #333;
+            word-break: break-word;
+        }
+
+        .task-text-input {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            font-size: 1em;
         }
 
         .task-checkbox {
             width: 20px;
             height: 20px;
             cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .edit-btn, .save-btn {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .edit-btn:hover, .save-btn:hover {
+            background: #f57c00;
+        }
+
+        .save-btn {
+            background: #4CAF50;
+        }
+
+        .save-btn:hover {
+            background: #45a049;
         }
 
         .recycle-btn {
@@ -153,6 +201,7 @@
             cursor: pointer;
             font-size: 0.9em;
             transition: background 0.3s;
+            flex-shrink: 0;
         }
 
         .recycle-btn:hover {
@@ -228,12 +277,6 @@
             color: #c62828;
         }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-
         @media (max-width: 768px) {
             .days-grid {
                 grid-template-columns: 1fr;
@@ -246,6 +289,14 @@
             h1 {
                 font-size: 1.5em;
             }
+
+            .add-task-form {
+                flex-direction: column;
+            }
+
+            .add-task-form input {
+                min-width: 100%;
+            }
         }
     </style>
 </head>
@@ -254,33 +305,51 @@
         <h1>📅 Weekly Task Manager</h1>
         <div id="errorBanner"></div>
 
+        <!-- Add Task Section (at top) -->
+        <div class="add-task-section">
+            <h2>➕ Add New Task</h2>
+            <div class="add-task-form">
+                <input type="text" id="newTaskInput" placeholder="Enter a new task..." />
+            </div>
+            <div class="day-buttons" id="addTaskDayButtons">
+                <button class="day-btn" onclick="addTaskToDay('pool')">Task Pool</button>
+                <button class="day-btn" onclick="addTaskToDay('monday')">Monday</button>
+                <button class="day-btn" onclick="addTaskToDay('tuesday')">Tuesday</button>
+                <button class="day-btn" onclick="addTaskToDay('wednesday')">Wednesday</button>
+                <button class="day-btn" onclick="addTaskToDay('thursday')">Thursday</button>
+                <button class="day-btn" onclick="addTaskToDay('friday')">Friday</button>
+                <button class="day-btn" onclick="addTaskToDay('saturday')">Saturday</button>
+                <button class="day-btn" onclick="addTaskToDay('sunday')">Sunday</button>
+            </div>
+        </div>
+
         <!-- Day Columns -->
         <div class="days-grid" id="daysGrid">
-            <div class="day-column" data-day="monday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="monday">
                 <div class="day-header">Monday</div>
                 <div class="day-tasks" id="monday-tasks"></div>
             </div>
-            <div class="day-column" data-day="tuesday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="tuesday">
                 <div class="day-header">Tuesday</div>
                 <div class="day-tasks" id="tuesday-tasks"></div>
             </div>
-            <div class="day-column" data-day="wednesday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="wednesday">
                 <div class="day-header">Wednesday</div>
                 <div class="day-tasks" id="wednesday-tasks"></div>
             </div>
-            <div class="day-column" data-day="thursday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="thursday">
                 <div class="day-header">Thursday</div>
                 <div class="day-tasks" id="thursday-tasks"></div>
             </div>
-            <div class="day-column" data-day="friday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="friday">
                 <div class="day-header">Friday</div>
                 <div class="day-tasks" id="friday-tasks"></div>
             </div>
-            <div class="day-column" data-day="saturday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="saturday">
                 <div class="day-header">Saturday</div>
                 <div class="day-tasks" id="saturday-tasks"></div>
             </div>
-            <div class="day-column" data-day="sunday" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="day-column" data-day="sunday">
                 <div class="day-header">Sunday</div>
                 <div class="day-tasks" id="sunday-tasks"></div>
             </div>
@@ -290,10 +359,6 @@
         <div class="task-pool-section">
             <div class="task-pool-header">
                 <h2>📋 Task Pool</h2>
-            </div>
-            <div class="add-task-form">
-                <input type="text" id="newTaskInput" placeholder="Enter a new task..." />
-                <button onclick="addTask()">Add Task</button>
             </div>
             <div id="taskPool"></div>
         </div>
@@ -309,6 +374,8 @@
         const API_URL = '/api';
         let tasks = [];
         let draggedTaskId = null;
+        let draggedOverTaskId = null;
+        let editingTaskId = null;
 
         // Show error banner
         function showError(message) {
@@ -334,14 +401,15 @@
             }
         }
 
-        // Add new task
-        async function addTask() {
+        // Add new task to specific day
+        async function addTaskToDay(day) {
             const input = document.getElementById('newTaskInput');
             const text = input.value.trim();
             
             if (text === '') return;
 
             try {
+                const position = tasks.filter(t => t.day === day).length;
                 const response = await fetch(`${API_URL}/tasks`, {
                     method: 'POST',
                     headers: {
@@ -349,9 +417,9 @@
                     },
                     body: JSON.stringify({
                         text: text,
-                        day: 'pool',
+                        day: day,
                         completed: 0,
-                        position: tasks.filter(t => t.day === 'pool').length
+                        position: position
                     })
                 });
 
@@ -431,6 +499,30 @@
             }
         }
 
+        // Start editing task
+        function startEdit(taskId) {
+            editingTaskId = taskId;
+            renderAllTasks();
+        }
+
+        // Save edited task
+        async function saveEdit(taskId) {
+            const inputElement = document.querySelector(`input[data-edit-id="${taskId}"]`);
+            if (inputElement) {
+                const newText = inputElement.value.trim();
+                if (newText) {
+                    await updateTask(taskId, { text: newText });
+                }
+            }
+            editingTaskId = null;
+        }
+
+        // Cancel editing
+        function cancelEdit() {
+            editingTaskId = null;
+            renderAllTasks();
+        }
+
         // Render a single task
         function renderTask(task) {
             const div = document.createElement('div');
@@ -439,32 +531,68 @@
             div.dataset.taskId = task.id;
             div.ondragstart = dragStart;
             div.ondragend = dragEnd;
+            div.ondragover = dragOver;
+            div.ondragleave = dragLeaveTask;
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'task-content';
 
-            const textSpan = document.createElement('span');
-            textSpan.className = 'task-text';
-            textSpan.textContent = task.text;
-            contentDiv.appendChild(textSpan);
+            // Task text or input
+            if (editingTaskId === task.id) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'task-text-input';
+                input.value = task.text;
+                input.dataset.editId = task.id;
+                input.onkeypress = (e) => {
+                    if (e.key === 'Enter') saveEdit(task.id);
+                    if (e.key === 'Escape') cancelEdit();
+                };
+                contentDiv.appendChild(input);
 
-            if (task.day !== 'pool' && task.day !== 'completed') {
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'task-checkbox';
-                checkbox.checked = task.completed;
-                checkbox.onchange = () => toggleComplete(task.id);
-                contentDiv.appendChild(checkbox);
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'save-btn';
+                saveBtn.innerHTML = '✓';
+                saveBtn.onclick = () => saveEdit(task.id);
+                contentDiv.appendChild(saveBtn);
 
-                const recycleBtn = document.createElement('button');
-                recycleBtn.className = 'recycle-btn';
-                recycleBtn.innerHTML = '♻️';
-                recycleBtn.onclick = () => recycleTask(task.id);
-                contentDiv.appendChild(recycleBtn);
+                setTimeout(() => input.focus(), 0);
+            } else {
+                const textSpan = document.createElement('span');
+                textSpan.className = 'task-text';
+                textSpan.textContent = task.text;
+                contentDiv.appendChild(textSpan);
+
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.innerHTML = '✏️';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    startEdit(task.id);
+                };
+                contentDiv.appendChild(editBtn);
+
+                // Checkbox and recycle for scheduled tasks
+                if (task.day !== 'pool' && task.day !== 'completed') {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'task-checkbox';
+                    checkbox.checked = task.completed;
+                    checkbox.onchange = () => toggleComplete(task.id);
+                    contentDiv.appendChild(checkbox);
+
+                    const recycleBtn = document.createElement('button');
+                    recycleBtn.className = 'recycle-btn';
+                    recycleBtn.innerHTML = '♻️';
+                    recycleBtn.onclick = () => recycleTask(task.id);
+                    contentDiv.appendChild(recycleBtn);
+                }
             }
 
             div.appendChild(contentDiv);
 
+            // Day buttons for pool tasks
             if (task.day === 'pool') {
                 const buttonsDiv = document.createElement('div');
                 buttonsDiv.className = 'day-buttons';
@@ -490,6 +618,33 @@
                 div.appendChild(buttonsDiv);
             }
 
+            // Day buttons for scheduled tasks (not pool, not completed)
+            if (task.day !== 'pool' && task.day !== 'completed') {
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'day-buttons';
+
+                const days = [
+                    { name: 'Mo', value: 'monday' },
+                    { name: 'Tu', value: 'tuesday' },
+                    { name: 'We', value: 'wednesday' },
+                    { name: 'Th', value: 'thursday' },
+                    { name: 'Fr', value: 'friday' },
+                    { name: 'Sa', value: 'saturday' },
+                    { name: 'Su', value: 'sunday' }
+                ];
+
+                days.forEach(day => {
+                    const btn = document.createElement('button');
+                    btn.className = 'day-btn';
+                    btn.textContent = day.name;
+                    btn.onclick = () => moveToDay(task.id, day.value);
+                    buttonsDiv.appendChild(btn);
+                });
+
+                div.appendChild(buttonsDiv);
+            }
+
+            // Day buttons and delete for completed tasks
             if (task.day === 'completed') {
                 const buttonsDiv = document.createElement('div');
                 buttonsDiv.className = 'day-buttons';
@@ -530,58 +685,127 @@
             document.getElementById('completedTasks').innerHTML = '';
             document.querySelectorAll('.day-tasks').forEach(el => el.innerHTML = '');
 
-            tasks.forEach(task => {
+            // Sort pool tasks alphabetically
+            const poolTasks = tasks.filter(t => t.day === 'pool').sort((a, b) => 
+                a.text.toLowerCase().localeCompare(b.text.toLowerCase())
+            );
+
+            // Other tasks by position
+            const dayTasks = tasks.filter(t => t.day !== 'pool' && t.day !== 'completed');
+            const completedTasks = tasks.filter(t => t.day === 'completed');
+
+            // Render pool tasks
+            poolTasks.forEach(task => {
                 const taskElement = renderTask(task);
-                
-                if (task.day === 'pool') {
-                    document.getElementById('taskPool').appendChild(taskElement);
-                } else if (task.day === 'completed') {
-                    document.getElementById('completedTasks').appendChild(taskElement);
-                } else {
-                    const dayContainer = document.getElementById(`${task.day}-tasks`);
-                    if (dayContainer) {
-                        dayContainer.appendChild(taskElement);
-                    }
+                document.getElementById('taskPool').appendChild(taskElement);
+            });
+
+            // Render day tasks
+            dayTasks.forEach(task => {
+                const taskElement = renderTask(task);
+                const dayContainer = document.getElementById(`${task.day}-tasks`);
+                if (dayContainer) {
+                    dayContainer.appendChild(taskElement);
                 }
+            });
+
+            // Render completed tasks
+            completedTasks.forEach(task => {
+                const taskElement = renderTask(task);
+                document.getElementById('completedTasks').appendChild(taskElement);
             });
         }
 
-        // Drag and drop
+        // Drag and drop for day columns
         function dragStart(e) {
             draggedTaskId = parseInt(e.target.dataset.taskId);
             e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
         }
 
         function dragEnd(e) {
             e.target.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
+            draggedOverTaskId = null;
         }
 
-        function allowDrop(e) {
+        // Drag over tasks within same day (for reordering)
+        function dragOver(e) {
             e.preventDefault();
-            const column = e.target.closest('.day-column');
-            if (column) column.classList.add('drag-over');
-        }
-
-        function dragLeave(e) {
-            const column = e.target.closest('.day-column');
-            if (column) column.classList.remove('drag-over');
-        }
-
-        function drop(e) {
-            e.preventDefault();
-            const column = e.target.closest('.day-column');
-            if (column) {
-                column.classList.remove('drag-over');
-                const day = column.dataset.day;
-                if (draggedTaskId && day) {
-                    moveToDay(draggedTaskId, day);
+            const target = e.target.closest('.task-item');
+            if (target && target.dataset.taskId) {
+                const targetTaskId = parseInt(target.dataset.taskId);
+                if (targetTaskId !== draggedTaskId) {
+                    draggedOverTaskId = targetTaskId;
+                    document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
+                    target.classList.add('drag-over-item');
                 }
             }
         }
 
-        // Enter key to add task
+        function dragLeaveTask(e) {
+            const target = e.target.closest('.task-item');
+            if (target) {
+                target.classList.remove('drag-over-item');
+            }
+        }
+
+        // Drop handler - handles both moving to different day and reordering
+        document.addEventListener('drop', async function(e) {
+            e.preventDefault();
+            
+            // Check if dropped on a task (for reordering)
+            if (draggedOverTaskId && draggedTaskId !== draggedOverTaskId) {
+                const draggedTask = tasks.find(t => t.id === draggedTaskId);
+                const targetTask = tasks.find(t => t.id === draggedOverTaskId);
+                
+                if (draggedTask && targetTask && draggedTask.day === targetTask.day) {
+                    // Reorder within same day
+                    const sameDayTasks = tasks.filter(t => t.day === draggedTask.day && t.id !== draggedTaskId);
+                    const targetIndex = sameDayTasks.findIndex(t => t.id === draggedOverTaskId);
+                    
+                    sameDayTasks.splice(targetIndex, 0, draggedTask);
+                    
+                    // Update positions
+                    for (let i = 0; i < sameDayTasks.length; i++) {
+                        await updateTask(sameDayTasks[i].id, { position: i });
+                    }
+                }
+            }
+            // Check if dropped on a day column
+            else {
+                const column = e.target.closest('.day-column');
+                if (column && draggedTaskId) {
+                    const day = column.dataset.day;
+                    if (day) {
+                        await moveToDay(draggedTaskId, day);
+                    }
+                }
+            }
+            
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
+        });
+
+        document.addEventListener('dragover', function(e) {
+            const column = e.target.closest('.day-column');
+            if (column) {
+                e.preventDefault();
+                column.classList.add('drag-over');
+            }
+        });
+
+        document.addEventListener('dragleave', function(e) {
+            const column = e.target.closest('.day-column');
+            if (column && !column.contains(e.relatedTarget)) {
+                column.classList.remove('drag-over');
+            }
+        });
+
+        // Enter key to add task to pool
         document.getElementById('newTaskInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addTask();
+            if (e.key === 'Enter') addTaskToDay('pool');
         });
 
         // Load tasks on page load
