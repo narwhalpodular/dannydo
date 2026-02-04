@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danny Do</title>
+    <title>Weekly Task Manager</title>
     <style>
         * {
             margin: 0;
@@ -191,10 +191,10 @@
             background: #ff9800;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 3px 6px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.75em;
             transition: background 0.3s;
             flex-shrink: 0;
         }
@@ -264,6 +264,27 @@
             background: #da190b;
         }
 
+        .arrow-btn {
+            background: #9e9e9e;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .arrow-btn:hover {
+            background: #757575;
+        }
+
+        .arrow-btn:disabled {
+            background: #e0e0e0;
+            cursor: not-allowed;
+        }
+
         .completed-section {
             background: #e8f5e9;
             border-radius: 8px;
@@ -325,7 +346,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📅 Weekly Task Manager</h1>
+        <h1>📅 DannyDo!</h1>
         <div id="errorBanner"></div>
 
         <!-- Add Task Section (at top) -->
@@ -546,6 +567,42 @@
             renderAllTasks();
         }
 
+        // Move task up in order
+        async function moveTaskUp(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const sameDayTasks = tasks
+                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                .sort((a, b) => a.position - b.position);
+            
+            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
+            if (currentIndex <= 0) return; // Already at top
+
+            // Swap positions with task above
+            const taskAbove = sameDayTasks[currentIndex - 1];
+            await updateTask(task.id, { position: taskAbove.position });
+            await updateTask(taskAbove.id, { position: task.position });
+        }
+
+        // Move task down in order
+        async function moveTaskDown(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const sameDayTasks = tasks
+                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                .sort((a, b) => a.position - b.position);
+            
+            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
+            if (currentIndex < 0 || currentIndex >= sameDayTasks.length - 1) return; // Already at bottom
+
+            // Swap positions with task below
+            const taskBelow = sameDayTasks[currentIndex + 1];
+            await updateTask(task.id, { position: taskBelow.position });
+            await updateTask(taskBelow.id, { position: task.position });
+        }
+
         // Render a single task
         function renderTask(task) {
             const div = document.createElement('div');
@@ -621,6 +678,26 @@
                 recycleBtn.innerHTML = '♻️';
                 recycleBtn.onclick = () => recycleTask(task.id);
                 actionsRow.appendChild(recycleBtn);
+
+                // Arrow buttons for reordering
+                const sameDayTasks = tasks
+                    .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                    .sort((a, b) => a.position - b.position);
+                const currentIndex = sameDayTasks.findIndex(t => t.id === task.id);
+
+                const upBtn = document.createElement('button');
+                upBtn.className = 'arrow-btn';
+                upBtn.innerHTML = '▲';
+                upBtn.onclick = () => moveTaskUp(task.id);
+                upBtn.disabled = currentIndex === 0;
+                actionsRow.appendChild(upBtn);
+
+                const downBtn = document.createElement('button');
+                downBtn.className = 'arrow-btn';
+                downBtn.innerHTML = '▼';
+                downBtn.onclick = () => moveTaskDown(task.id);
+                downBtn.disabled = currentIndex === sameDayTasks.length - 1;
+                actionsRow.appendChild(downBtn);
             }
 
             // Day buttons for pool tasks
@@ -732,7 +809,9 @@
             );
 
             // Other tasks by position
-            const dayTasks = tasks.filter(t => t.day !== 'pool' && t.day !== 'completed');
+            const dayTasks = tasks
+                .filter(t => t.day !== 'pool' && t.day !== 'completed')
+                .sort((a, b) => a.position - b.position);
             const completedTasks = tasks.filter(t => t.day === 'completed');
 
             // Render pool tasks
@@ -796,21 +875,50 @@
         document.addEventListener('drop', async function(e) {
             e.preventDefault();
             
+            const draggedTask = tasks.find(t => t.id === draggedTaskId);
+            if (!draggedTask) return;
+
             // Check if dropped on a task (for reordering)
             if (draggedOverTaskId && draggedTaskId !== draggedOverTaskId) {
-                const draggedTask = tasks.find(t => t.id === draggedTaskId);
                 const targetTask = tasks.find(t => t.id === draggedOverTaskId);
                 
-                if (draggedTask && targetTask && draggedTask.day === targetTask.day) {
+                if (draggedTask && targetTask && draggedTask.day === targetTask.day && targetTask.day !== 'pool' && targetTask.day !== 'completed') {
                     // Reorder within same day
-                    const sameDayTasks = tasks.filter(t => t.day === draggedTask.day && t.id !== draggedTaskId);
+                    const sameDayTasks = tasks
+                        .filter(t => t.day === draggedTask.day && t.day !== 'pool' && t.day !== 'completed')
+                        .sort((a, b) => a.position - b.position);
+                    
+                    const draggedIndex = sameDayTasks.findIndex(t => t.id === draggedTaskId);
                     const targetIndex = sameDayTasks.findIndex(t => t.id === draggedOverTaskId);
                     
-                    sameDayTasks.splice(targetIndex, 0, draggedTask);
-                    
-                    // Update positions
-                    for (let i = 0; i < sameDayTasks.length; i++) {
-                        await updateTask(sameDayTasks[i].id, { position: i });
+                    if (draggedIndex !== -1 && targetIndex !== -1) {
+                        // Remove dragged task from array
+                        const [movedTask] = sameDayTasks.splice(draggedIndex, 1);
+                        // Insert at target position
+                        sameDayTasks.splice(targetIndex, 0, movedTask);
+                        
+                        // Update all positions
+                        for (let i = 0; i < sameDayTasks.length; i++) {
+                            const taskToUpdate = sameDayTasks[i];
+                            const taskIndex = tasks.findIndex(t => t.id === taskToUpdate.id);
+                            if (taskIndex !== -1) {
+                                tasks[taskIndex].position = i;
+                            }
+                            
+                            try {
+                                await fetch(`${API_URL}/tasks/${taskToUpdate.id}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ position: i })
+                                });
+                            } catch (error) {
+                                console.error('Error updating position:', error);
+                            }
+                        }
+                        
+                        renderAllTasks();
                     }
                 }
             }
@@ -819,7 +927,7 @@
                 const column = e.target.closest('.day-column');
                 if (column && draggedTaskId) {
                     const day = column.dataset.day;
-                    if (day) {
+                    if (day && draggedTask.day !== day) {
                         await moveToDay(draggedTaskId, day);
                     }
                 }
@@ -827,6 +935,7 @@
             
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
             document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
+            draggedOverTaskId = null;
         });
 
         document.addEventListener('dragover', function(e) {
