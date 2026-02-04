@@ -1,8 +1,7 @@
 const express = require('express');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,37 +11,41 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Ensure data directory exists
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Initialize PostgreSQL connection
+// Railway automatically provides DATABASE_URL when you add PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+// Create tasks table on startup
+async function initDatabase() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        text TEXT NOT NULL,
+        day TEXT NOT NULL,
+        completed INTEGER DEFAULT 0,
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('? Database initialized successfully');
+  } catch (error) {
+    console.error('? Error initializing database:', error);
+  }
 }
 
-// Initialize SQLite database
-const dbPath = path.join(dataDir, 'tasks.db');
-const db = new Database(dbPath);
-
-// Create tasks table
-db.exec(`
-  CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT NOT NULL,
-    day TEXT NOT NULL,
-    completed INTEGER DEFAULT 0,
-    position INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-console.log('Database initialized at:', dbPath);
+initDatabase();
 
 // API Routes
 
 // GET all tasks
-app.get('/api/tasks', (req, res) => {
+app.get('/api/tasks', async (req, res) => {
   try {
-    const tasks = db.prepare('SELECT * FROM tasks ORDER BY position ASC').all();
-    res.json(tasks);
+    const result = await pool.query('SELECT * FROM tasks ORDER BY position ASC');
+    res.json(result.rows);
   } catch (error) {
     console.error('Error getting tasks:', error);
     res.status(500).json({ error: error.message });
@@ -50,11 +53,11 @@ app.get('/api/tasks', (req, res) => {
 });
 
 // GET tasks by day
-app.get('/api/tasks/day/:day', (req, res) => {
+app.get('/api/tasks/day/:day', async (req, res) => {
   try {
     const { day } = req.params;
-    const tasks = db.prepare('SELECT * FROM tasks WHERE day = ? ORDER BY position ASC').all(day);
-    res.json(tasks);
+    const result = await pool.query('SELECT * FROM tasks WHERE day = $1 ORDER BY position ASC', [day]);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error getting tasks by day:', error);
     res.status(500).json({ error: error.message });
@@ -62,7 +65,7 @@ app.get('/api/tasks/day/:day', (req, res) => {
 });
 
 // POST - Create new task
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   try {
     const { text, day = 'pool', completed = 0, position = 0 } = req.body;
     
@@ -70,16 +73,12 @@ app.post('/api/tasks', (req, res) => {
       return res.status(400).json({ error: 'Task text is required' });
     }
 
-    const stmt = db.prepare('INSERT INTO tasks (text, day, completed, position) VALUES (?, ?, ?, ?)');
-    const result = stmt.run(text, day, completed, position);
+    const result = await pool.query(
+      'INSERT INTO tasks (text, day, completed, position) VALUES ($1, $2, $3, $4) RETURNING *',
+      [text, day, completed, position]
+    );
     
-    res.status(201).json({
-      id: result.lastInsertRowid,
-      text,
-      day,
-      completed,
-      position
-    });
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ error: error.message });
@@ -87,28 +86,29 @@ app.post('/api/tasks', (req, res) => {
 });
 
 // PUT - Update task
-app.put('/api/tasks/:id', (req, res) => {
+app.put('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { text, day, completed, position } = req.body;
     
     let updates = [];
     let values = [];
+    let valueIndex = 1;
     
     if (text !== undefined) {
-      updates.push('text = ?');
+      updates.push(`text = $${valueIndex++}`);
       values.push(text);
     }
     if (day !== undefined) {
-      updates.push('day = ?');
+      updates.push(`day = $${valueIndex++}`);
       values.push(day);
     }
     if (completed !== undefined) {
-      updates.push('completed = ?');
+      updates.push(`completed = $${valueIndex++}`);
       values.push(completed);
     }
     if (position !== undefined) {
-      updates.push('position = ?');
+      updates.push(`position = $${valueIndex++}`);
       values.push(position);
     }
     
@@ -118,10 +118,16 @@ app.put('/api/tasks/:id', (req, res) => {
     
     values.push(id);
     
-    const stmt = db.prepare(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`);
-    const result = stmt.run(...values);
+    const result = await pool.query(
+      `UPDATE tasks SET ${updates.join(', ')} WHERE id = $${valueIndex} RETURNING *`,
+      values
+    );
     
-    res.json({ id: parseInt(id), changes: result.changes });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ error: error.message });
@@ -129,13 +135,16 @@ app.put('/api/tasks/:id', (req, res) => {
 });
 
 // DELETE task
-app.delete('/api/tasks/:id', (req, res) => {
+app.delete('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const stmt = db.prepare('DELETE FROM tasks WHERE id = ?');
-    const result = stmt.run(id);
+    const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
     
-    res.json({ id: parseInt(id), changes: result.changes });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    res.json({ id: parseInt(id), deleted: true });
   } catch (error) {
     console.error('Error deleting task:', error);
     res.status(500).json({ error: error.message });
@@ -143,8 +152,13 @@ app.delete('/api/tasks/:id', (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: 'connected' });
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
+  }
 });
 
 // Serve the frontend
@@ -154,19 +168,19 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📁 Database location: ${dbPath}`);
+  console.log(`? Server running on http://0.0.0.0:${PORT}`);
+  console.log(`?? Database: PostgreSQL (${process.env.DATABASE_URL ? 'connected' : 'waiting for DATABASE_URL'})`);
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, closing database...');
-  db.close();
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing database pool...');
+  await pool.end();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, closing database...');
-  db.close();
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, closing database pool...');
+  await pool.end();
   process.exit(0);
 });
