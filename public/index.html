@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #65c8d1;
             min-height: 100vh;
             padding: 20px;
         }
@@ -22,7 +22,7 @@
             max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
+            border-radius: 7px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             padding: 30px;
         }
@@ -35,11 +35,11 @@
         }
 
         .add-task-section {
-            background: #f0f4ff;
-            border-radius: 8px;
+            background: #e6e7e8;
+            border-radius: 7px;
             padding: 20px;
             margin-bottom: 30px;
-            border: 2px solid #667eea;
+            
         }
 
         .add-task-section h2 {
@@ -89,25 +89,24 @@
         .day-column {
             background: #f8f9fa;
             border-radius: 8px;
-            padding: 15px;
+            padding: 7px;
             min-height: 150px;
         }
 
         .day-header {
             font-weight: bold;
             font-size: 1.1em;
-            color: #667eea;
+            color: #ff512f;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid #939598;
         }
 
         .task-pool-section {
-            background: #fff9e6;
+            background: #f4e8d3;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 30px;
-            border: 2px solid #ffd700;
         }
 
         .task-pool-header h2 {
@@ -177,7 +176,8 @@
             padding: 8px;
             border: 2px solid #667eea;
             border-radius: 4px;
-            font-size: 1em;
+            font-size: .8em;
+			max-width: 90%;
         }
 
         .task-checkbox {
@@ -188,10 +188,9 @@
         }
 
         .edit-btn, .save-btn {
-            background: #ff9800;
             color: white;
             border: none;
-            padding: 3px 6px;
+            padding: 1px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.75em;
@@ -212,10 +211,9 @@
         }
 
         .recycle-btn {
-            background: #4CAF50;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 1px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9em;
@@ -234,16 +232,20 @@
         }
 
         .day-btn {
-            background: #667eea;
+            background: #3489a3;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 5px 6px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.7em;
             font-weight: bold;
             transition: background 0.3s;
         }
+		
+		.day-pool {
+			background: #f05437 !important;
+		}
 
         .day-btn:hover {
             background: #5568d3;
@@ -289,7 +291,6 @@
             background: #e8f5e9;
             border-radius: 8px;
             padding: 20px;
-            border: 2px solid #4CAF50;
         }
 
         .completed-section h2 {
@@ -346,7 +347,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📅 DannyDoass</h1>
+        <h1>📅 DannyDo</h1>
         <div id="errorBanner"></div>
 
         <!-- Add Task Section (at top) -->
@@ -356,7 +357,7 @@
                 <input type="text" id="newTaskInput" placeholder="Enter a new task..." />
             </div>
             <div class="day-buttons" id="addTaskDayButtons">
-                <button class="day-btn" onclick="addTaskToDay('pool')">Task Pool</button>
+                <button class="day-btn day-pool" onclick="addTaskToDay('pool')">Task Pool</button>
                 <button class="day-btn" onclick="addTaskToDay('monday')">Monday</button>
                 <button class="day-btn" onclick="addTaskToDay('tuesday')">Tuesday</button>
                 <button class="day-btn" onclick="addTaskToDay('wednesday')">Wednesday</button>
