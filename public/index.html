@@ -103,6 +103,10 @@
             min-height: 150px;
         }
 
+        .day-column.today {
+            background: #f4e2df;
+        }
+
         .day-header {
             font-weight: bold;
             font-size: 1.1em;
@@ -969,7 +973,20 @@
             if (e.key === 'Enter') addTaskToDay('pool');
         });
 
-        // Load tasks on page load
+        // Highlight today's day column
+        function highlightToday() {
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const todayName = days[today];
+            
+            const todayColumn = document.querySelector(`.day-column[data-day="${todayName}"]`);
+            if (todayColumn) {
+                todayColumn.classList.add('today');
+            }
+        }
+
+        // Load tasks and highlight today on page load
+        highlightToday();
         loadTasks();
     </script>
 </body>
