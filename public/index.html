@@ -141,8 +141,12 @@
             border-radius: 6px;
             padding: 12px;
             margin-bottom: 10px;
-            cursor: move;
+            cursor: grab;
             transition: all 0.3s;
+        }
+
+        .task-item:active {
+            cursor: grabbing;
         }
 
         .task-item:hover {
@@ -152,6 +156,7 @@
 
         .task-item.dragging {
             opacity: 0.5;
+            cursor: grabbing;
         }
 
         .task-item.drag-over-item {
@@ -302,10 +307,10 @@
         }
 
         .duplicate-btn {
-            background: #000000;
+            background: #9c27b0;
             color: white;
             border: none;
-            padding: 4px 3px 1px 3px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.85em;
@@ -725,6 +730,7 @@
                     e.stopPropagation();
                     startEdit(task.id);
                 };
+                editBtn.onmousedown = (e) => e.stopPropagation();
                 textRow.appendChild(editBtn);
             }
 
@@ -948,13 +954,20 @@
 
         // Drag and drop for day columns
         function dragStart(e) {
-            draggedTaskId = parseInt(e.target.dataset.taskId);
-            e.target.classList.add('dragging');
+            // Don't start drag if clicking on a button or input
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+                e.preventDefault();
+                return false;
+            }
+            
+            draggedTaskId = parseInt(e.currentTarget.dataset.taskId);
+            e.currentTarget.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
         }
 
         function dragEnd(e) {
-            e.target.classList.remove('dragging');
+            e.currentTarget.classList.remove('dragging');
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
             document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
             draggedOverTaskId = null;
