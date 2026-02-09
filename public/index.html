@@ -301,6 +301,22 @@
             cursor: not-allowed;
         }
 
+        .duplicate-btn {
+            background: #9c27b0;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .duplicate-btn:hover {
+            background: #7b1fa2;
+        }
+
         .completed-section {
             background: #e8f5e9;
             border-radius: 8px;
@@ -426,12 +442,16 @@
         <div class="completed-section">
             <h2>✅ Completed Tasks</h2>
             <div id="completedTasks"></div>
+            <div id="showAllCompleted" style="display: none; text-align: center; margin-top: 15px;">
+                <a href="#" onclick="showAllCompletedTasks(event)" style="color: #2e7d32; text-decoration: underline; cursor: pointer;">Show all completed tasks</a>
+            </div>
         </div>
     </div>
 
     <script>
         const API_URL = '/api';
         let tasks = [];
+        let showAllCompleted = false;
         let draggedTaskId = null;
         let draggedOverTaskId = null;
         let editingTaskId = null;
@@ -582,6 +602,37 @@
             renderAllTasks();
         }
 
+        // Duplicate task
+        async function duplicateTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            try {
+                const position = tasks.filter(t => t.day === task.day).length;
+                const response = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: task.text,
+                        day: task.day,
+                        completed: 0,
+                        position: position
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to duplicate task');
+                
+                const newTask = await response.json();
+                tasks.push(newTask);
+                renderAllTasks();
+            } catch (error) {
+                console.error('Error duplicating task:', error);
+                showError('Failed to duplicate task. Please try again.');
+            }
+        }
+
         // Move task up in order
         async function moveTaskUp(taskId) {
             const task = tasks.find(t => t.id === taskId);
@@ -596,8 +647,10 @@
 
             // Swap positions with task above
             const taskAbove = sameDayTasks[currentIndex - 1];
+            const tempPosition = task.position;
+            
             await updateTask(task.id, { position: taskAbove.position });
-            await updateTask(taskAbove.id, { position: task.position });
+            await updateTask(taskAbove.id, { position: tempPosition });
         }
 
         // Move task down in order
@@ -614,8 +667,10 @@
 
             // Swap positions with task below
             const taskBelow = sameDayTasks[currentIndex + 1];
+            const tempPosition = task.position;
+            
             await updateTask(task.id, { position: taskBelow.position });
-            await updateTask(taskBelow.id, { position: task.position });
+            await updateTask(taskBelow.id, { position: tempPosition });
         }
 
         // Render a single task
@@ -740,6 +795,14 @@
 
                 actionsRow.appendChild(buttonsContainer);
 
+                // Add duplicate button for pool tasks
+                const duplicateBtn = document.createElement('button');
+                duplicateBtn.className = 'duplicate-btn';
+                duplicateBtn.innerHTML = '⎘'; // Copy/duplicate icon
+                duplicateBtn.title = 'Duplicate task';
+                duplicateBtn.onclick = () => duplicateTask(task.id);
+                actionsRow.appendChild(duplicateBtn);
+
                 // Add delete button for pool tasks
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
@@ -772,6 +835,14 @@
                 });
 
                 actionsRow.appendChild(buttonsContainer);
+
+                // Add duplicate button for scheduled tasks
+                const duplicateBtn = document.createElement('button');
+                duplicateBtn.className = 'duplicate-btn';
+                duplicateBtn.innerHTML = '⎘'; // Copy/duplicate icon
+                duplicateBtn.title = 'Duplicate task';
+                duplicateBtn.onclick = () => duplicateTask(task.id);
+                actionsRow.appendChild(duplicateBtn);
             }
 
             // Day buttons and delete for completed tasks
@@ -798,6 +869,14 @@
                 });
 
                 actionsRow.appendChild(buttonsContainer);
+
+                // Add duplicate button for completed tasks
+                const duplicateBtn = document.createElement('button');
+                duplicateBtn.className = 'duplicate-btn';
+                duplicateBtn.innerHTML = '⎘'; // Copy/duplicate icon
+                duplicateBtn.title = 'Duplicate task';
+                duplicateBtn.onclick = () => duplicateTask(task.id);
+                actionsRow.appendChild(duplicateBtn);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
@@ -844,11 +923,27 @@
                 }
             });
 
-            // Render completed tasks
-            completedTasks.forEach(task => {
+            // Render completed tasks - show only last 5 unless showAllCompleted is true
+            const completedTasksToShow = showAllCompleted ? completedTasks : completedTasks.slice(-5);
+            completedTasksToShow.forEach(task => {
                 const taskElement = renderTask(task);
                 document.getElementById('completedTasks').appendChild(taskElement);
             });
+
+            // Show/hide "show all" link
+            const showAllLink = document.getElementById('showAllCompleted');
+            if (completedTasks.length > 5 && !showAllCompleted) {
+                showAllLink.style.display = 'block';
+            } else {
+                showAllLink.style.display = 'none';
+            }
+        }
+
+        // Show all completed tasks
+        function showAllCompletedTasks(event) {
+            event.preventDefault();
+            showAllCompleted = true;
+            renderAllTasks();
         }
 
         // Drag and drop for day columns
