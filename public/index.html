@@ -135,6 +135,58 @@
             gap: 10px;
         }
 
+        .down-the-road-section {
+            background: #e8f0e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px solid #7a9e7a;
+        }
+
+        .down-the-road-header h2 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+
+        #downTheRoad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .later-btn {
+            background: #7a9e7a;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .later-btn:hover {
+            background: #5c7a5c;
+        }
+
+        .to-pool-btn {
+            background: #c87941;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .to-pool-btn:hover {
+            background: #a0602f;
+        }
+
         .task-item {
             background: white;
             border: 2px solid #e0e0e0;
@@ -393,6 +445,7 @@
             </div>
             <div class="day-buttons" id="addTaskDayButtons">
                 <button class="day-btn day-pool" onclick="addTaskToDay('pool')">Task Pool</button>
+                <button class="later-btn" onclick="addTaskToDay('later')">Later</button>
                 <button class="day-btn" onclick="addTaskToDay('monday')">Monday</button>
                 <button class="day-btn" onclick="addTaskToDay('tuesday')">Tuesday</button>
                 <button class="day-btn" onclick="addTaskToDay('wednesday')">Wednesday</button>
@@ -441,6 +494,14 @@
                 <h2>📋 Task Pool</h2>
             </div>
             <div id="taskPool"></div>
+        </div>
+
+        <!-- Down the Road -->
+        <div class="down-the-road-section">
+            <div class="down-the-road-header">
+                <h2>🛣️ Down the Road</h2>
+            </div>
+            <div id="downTheRoad"></div>
         </div>
 
         <!-- Completed Tasks -->
@@ -644,7 +705,7 @@
             if (!task) return;
 
             const sameDayTasks = tasks
-                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
                 .sort((a, b) => a.position - b.position);
             
             const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
@@ -664,7 +725,7 @@
             if (!task) return;
 
             const sameDayTasks = tasks
-                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
                 .sort((a, b) => a.position - b.position);
             
             const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
@@ -741,7 +802,7 @@
             actionsRow.className = 'task-actions-row';
 
             // Checkbox and recycle for scheduled tasks
-            if (task.day !== 'pool' && task.day !== 'completed') {
+            if (task.day !== 'pool' && task.day !== 'later' && task.day !== 'completed') {
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'task-checkbox';
@@ -757,7 +818,7 @@
 
                 // Arrow buttons for reordering
                 const sameDayTasks = tasks
-                    .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'completed')
+                    .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
                     .sort((a, b) => a.position - b.position);
                 const currentIndex = sameDayTasks.findIndex(t => t.id === task.id);
 
@@ -801,10 +862,17 @@
 
                 actionsRow.appendChild(buttonsContainer);
 
+                // Later button for pool tasks
+                const laterBtn = document.createElement('button');
+                laterBtn.className = 'later-btn';
+                laterBtn.textContent = 'Later';
+                laterBtn.onclick = () => updateTask(task.id, { day: 'later' });
+                actionsRow.appendChild(laterBtn);
+
                 // Add duplicate button for pool tasks
                 const duplicateBtn = document.createElement('button');
                 duplicateBtn.className = 'duplicate-btn';
-                duplicateBtn.innerHTML = '⎘'; // Copy/duplicate icon
+                duplicateBtn.innerHTML = '⎘';
                 duplicateBtn.title = 'Duplicate task';
                 duplicateBtn.onclick = () => duplicateTask(task.id);
                 actionsRow.appendChild(duplicateBtn);
@@ -817,8 +885,32 @@
                 actionsRow.appendChild(deleteBtn);
             }
 
-            // Day buttons for scheduled tasks (not pool, not completed)
-            if (task.day !== 'pool' && task.day !== 'completed') {
+            // Buttons for Down the Road tasks
+            if (task.day === 'later') {
+                const toPoolBtn = document.createElement('button');
+                toPoolBtn.className = 'to-pool-btn';
+                toPoolBtn.textContent = 'Task Pool';
+                toPoolBtn.onclick = () => updateTask(task.id, { day: 'pool' });
+                actionsRow.appendChild(toPoolBtn);
+
+                // Add duplicate button for later tasks
+                const duplicateBtn = document.createElement('button');
+                duplicateBtn.className = 'duplicate-btn';
+                duplicateBtn.innerHTML = '⎘';
+                duplicateBtn.title = 'Duplicate task';
+                duplicateBtn.onclick = () => duplicateTask(task.id);
+                actionsRow.appendChild(duplicateBtn);
+
+                // Add delete button for later tasks
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteTask(task.id);
+                actionsRow.appendChild(deleteBtn);
+            }
+
+            // Day buttons for scheduled tasks (not pool, not later, not completed)
+            if (task.day !== 'pool' && task.day !== 'later' && task.day !== 'completed') {
                 const buttonsContainer = document.createElement('div');
                 buttonsContainer.className = 'day-buttons';
 
@@ -900,6 +992,7 @@
         // Render all tasks
         function renderAllTasks() {
             document.getElementById('taskPool').innerHTML = '';
+            document.getElementById('downTheRoad').innerHTML = '';
             document.getElementById('completedTasks').innerHTML = '';
             document.querySelectorAll('.day-tasks').forEach(el => el.innerHTML = '');
 
@@ -908,9 +1001,14 @@
                 a.text.toLowerCase().localeCompare(b.text.toLowerCase())
             );
 
-            // Other tasks by position
+            // Sort later tasks alphabetically
+            const laterTasks = tasks.filter(t => t.day === 'later').sort((a, b) => 
+                a.text.toLowerCase().localeCompare(b.text.toLowerCase())
+            );
+
+            // Day tasks (exclude pool, later, completed)
             const dayTasks = tasks
-                .filter(t => t.day !== 'pool' && t.day !== 'completed')
+                .filter(t => t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
                 .sort((a, b) => a.position - b.position);
             const completedTasks = tasks.filter(t => t.day === 'completed');
 
@@ -918,6 +1016,12 @@
             poolTasks.forEach(task => {
                 const taskElement = renderTask(task);
                 document.getElementById('taskPool').appendChild(taskElement);
+            });
+
+            // Render later tasks
+            laterTasks.forEach(task => {
+                const taskElement = renderTask(task);
+                document.getElementById('downTheRoad').appendChild(taskElement);
             });
 
             // Render day tasks
