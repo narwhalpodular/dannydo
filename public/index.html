@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DannyDo</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="theme-color" content="#65c8d1">
+
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Sansita:ital,wght@0,400;0,700;0,800;0,900;1,400;1,700;1,800;1,900&family=Splash&display=swap" rel="stylesheet">
@@ -563,6 +567,7 @@
                     body: JSON.stringify({
                         text: text,
                         day: day,
+
                         completed: 0,
                         position: position
                     })
@@ -700,43 +705,89 @@
         }
 
         // Move task up in order
+        
         async function moveTaskUp(taskId) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
 
             const sameDayTasks = tasks
-                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
+                .filter(t => t.day === task.day && !['pool','later','completed'].includes(t.day))
                 .sort((a, b) => a.position - b.position);
-            
-            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
-            if (currentIndex <= 0) return; // Already at top
 
-            // Swap positions with task above
+            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
+            if (currentIndex <= 0) return;
+
             const taskAbove = sameDayTasks[currentIndex - 1];
-            const tempPosition = task.position;
-            
-            await updateTask(task.id, { position: taskAbove.position });
-            await updateTask(taskAbove.id, { position: tempPosition });
+
+            const newPosition = taskAbove.position;
+            const aboveNewPosition = task.position;
+
+            try {
+                await Promise.all([
+                    fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ position: newPosition })
+                    }),
+                    fetch(`${API_URL}/tasks/${taskAbove.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ position: aboveNewPosition })
+                    })
+                ]);
+
+                task.position = newPosition;
+                taskAbove.position = aboveNewPosition;
+
+                renderAllTasks();
+
+            } catch (err) {
+                console.error('Error moving task up:', err);
+                showError('Failed to reorder task.');
+            }
         }
 
         // Move task down in order
+        
         async function moveTaskDown(taskId) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
 
             const sameDayTasks = tasks
-                .filter(t => t.day === task.day && t.day !== 'pool' && t.day !== 'later' && t.day !== 'completed')
+                .filter(t => t.day === task.day && !['pool','later','completed'].includes(t.day))
                 .sort((a, b) => a.position - b.position);
-            
-            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
-            if (currentIndex < 0 || currentIndex >= sameDayTasks.length - 1) return; // Already at bottom
 
-            // Swap positions with task below
+            const currentIndex = sameDayTasks.findIndex(t => t.id === taskId);
+            if (currentIndex < 0 || currentIndex >= sameDayTasks.length - 1) return;
+
             const taskBelow = sameDayTasks[currentIndex + 1];
-            const tempPosition = task.position;
-            
-            await updateTask(task.id, { position: taskBelow.position });
-            await updateTask(taskBelow.id, { position: tempPosition });
+
+            const newPosition = taskBelow.position;
+            const belowNewPosition = task.position;
+
+            try {
+                await Promise.all([
+                    fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ position: newPosition })
+                    }),
+                    fetch(`${API_URL}/tasks/${taskBelow.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ position: belowNewPosition })
+                    })
+                ]);
+
+                task.position = newPosition;
+                taskBelow.position = belowNewPosition;
+
+                renderAllTasks();
+
+            } catch (err) {
+                console.error('Error moving task down:', err);
+                showError('Failed to reorder task.');
+            }
         }
 
         // Render a single task
@@ -1188,6 +1239,7 @@
         // Highlight today's day column
         function highlightToday() {
             const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
             const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
             const todayName = days[today];
             
