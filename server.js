@@ -24,6 +24,8 @@ const pool = new Pool({
   }
 });
 
+ssl: { rejectUnauthorized: false }
+
 // Create tasks table on startup
 async function initDatabase() {
   try {
